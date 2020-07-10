@@ -16,11 +16,16 @@ import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.admin.StreamManager;
 import io.pravega.client.stream.*;
 import io.pravega.client.stream.impl.ByteArraySerializer;
+import io.pravega.local.LocalPravegaEmulator;
+import io.pravega.test.common.TestUtils;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -31,12 +36,28 @@ import java.util.concurrent.ScheduledExecutorService;
 public class TestConsumePravega {
     private static Logger log = LoggerFactory.getLogger(TestConsumePravega.class);
 
+    static LocalPravegaEmulator localPravega;
+
+    @BeforeClass
+    public static void launchPravegaCluster() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+        localPravega = LocalPravegaEmulator.builder()
+                .controllerPort(TestUtils.getAvailableListenPort())
+                .segmentStorePort(TestUtils.getAvailableListenPort())
+                .zkPort(TestUtils.getAvailableListenPort())
+                .enableRestServer(false)
+                .enableAuth(false)
+                .enableTls(false)
+                .build();
+        Method startMethod = localPravega.getClass().getDeclaredMethod("start");
+        startMethod.setAccessible(true);
+        startMethod.invoke(localPravega);
+    }
+
     @Test
-    @Ignore()
     public void testProcessor() throws Exception {
         // TODO: write tests
 
-        final URI controllerURI = new URI("tcp://localhost:9090");
+        final URI controllerURI = new URI(localPravega.getInProcPravegaCluster().getControllerURI());
         final String scope = "TestConsumePravega-" + UUID.randomUUID().toString();
         final String streamName = "stream1";
         final StreamConfiguration streamConfig = StreamConfiguration.builder()
